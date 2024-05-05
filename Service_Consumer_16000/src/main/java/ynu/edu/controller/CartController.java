@@ -1,6 +1,10 @@
 package ynu.edu.controller;
 
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import jakarta.annotation.Resource;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
@@ -13,26 +17,65 @@ import ynu.edu.entity.CommonResult;
 import ynu.edu.entity.User;
 import ynu.edu.feign.ServiceProviderService;
 
+import java.util.Date;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/cart")
 public class CartController {
 @Resource
 private ServiceProviderService serviceProviderService;
-    @GetMapping("/getCartById/{userId}")
-    @CircuitBreaker(name="backendA", fallbackMethod = "getCartByIdDown")  //16000是B,在向A请求服务  这个控制器 配置熔断机制。 A来向B反馈，所以终止于A
-    public CommonResult<User> getCartById(@PathVariable("userId") Integer userId){
-        CommonResult<User> result = serviceProviderService.getUserById(userId);
-        return result;
+    @GetMapping("/getCartById1/{userId}")
+//    @CircuitBreaker(name="backendA", fallbackMethod = "getCartByIdDownA")
+//    @Bulkhead(name = "bulkhead1", fallbackMethod = "getCartByIdDownBulkheadA")
+//    @RateLimiter(name="rate1", fallbackMethod = "getCartByIdDownRateLimiter")
+//    @TimeLimiter(name="backendA", fallbackMethod = "getCartByIdDown")
+    @Retry(name="retry1", fallbackMethod = "getCartByIdDown")
+    public CommonResult<User> getCartById1(@PathVariable("userId") Integer userId) throws InterruptedException{
+        System.out.println(new Date()+"getCartById1");
+        return serviceProviderService.getUserById(userId);
     }
 
-    public CommonResult<User> getCartByIdDown(Integer userId, Throwable e){ //这个callback方法接受的参数首先需要有原方法 接收的参数. 同时还有一个异常 参数
-        //可以根据产生的异常不同，可以设置不同的异常类型，Throwable是最广泛的，比如：SQLDataException（这个异常对应的返回的异常信息就是 ：请联系管理员，当前数据库异常
-        e.printStackTrace();
-        String message = "获取用户"+userId+"信息的服务当前被熔断，因此方法降级";
+    @GetMapping("/getCartById2/{userId}")
+    @CircuitBreaker(name="backendB", fallbackMethod = "getCartByIdDownB")
+    public CommonResult<User> getCartById2(@PathVariable("userId") Integer userId) throws InterruptedException{
+        System.out.println(new Date()+"getCartById2");
+        return serviceProviderService.getUserById(userId);
+    }
+
+    public CommonResult<User> getCartByIdDownRateLimiter(Integer userId, Throwable e){
+        //e.printStackTrace();//可以用来定位错误原因，当为了显示清晰，就先不输出这个了
+        String message = "获取用户"+userId+"rate1: getCartByIdDownRateLimiter";
         System.out.println(message);
-        CommonResult<User> result = new CommonResult<>(400, message, new User());
-        return result;
+        return new CommonResult<User>(400,"A: fall back服务降级",new User());
+    }
+
+    public CommonResult<User> getCartByIdDownA(Integer userId, Throwable e){
+        //e.printStackTrace();//可以用来定位错误原因，当为了显示清晰，就先不输出这个了
+        String message = "获取用户"+userId+"backendA circuit breaker";
+        System.out.println(message);
+        return new CommonResult<User>(400,"A: fall back服务降级",new User());
+    }
+
+    public CommonResult<User> getCartByIdDown(Integer userId, Throwable e){
+        //e.printStackTrace();//可以用来定位错误原因，当为了显示清晰，就先不输出这个了
+        String message = "获取用户"+userId+"fall back服务降级";
+        System.out.println(message);
+        return new CommonResult<User>(400,"fall back服务降级",new User());
+    }
+
+    public CommonResult<User> getCartByIdDownBulkheadA(Integer userId, Throwable e){
+        //e.printStackTrace();//可以用来定位错误原因，当为了显示清晰，就先不输出这个了
+        String message = "获取用户"+userId+"fall back: Bulkhead1";
+        System.out.println(message);
+        return new CommonResult<User>(400,"A: fall back服务降级",new User());
+    }
+
+    public CommonResult<User> getCartByIdDownB(Integer userId, Throwable e){
+        //e.printStackTrace();//可以用来定位错误原因，当为了显示清晰，就先不输出这个了
+        String message = "获取用户"+userId+"backendB circuit breaker";
+        System.out.println(message);
+        return new CommonResult<User>(400,"B: fall back服务降级",new User());
     }
 }

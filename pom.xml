@@ -72,6 +72,32 @@
                 <version>3.1.1</version>
             </dependency>
 
+            <!-- https://mvnrepository.com/artifact/io.github.resilience4j/resilience4j-retry -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-retry</artifactId>
+                <version>2.2.0</version>
+            </dependency>
+            <!-- https://mvnrepository.com/artifact/io.github.resilience4j/resilience4j-ratelimiter -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-ratelimiter</artifactId>
+                <version>2.2.0</version>
+            </dependency>
+
+            <!-- https://mvnrepository.com/artifact/io.github.resilience4j/resilience4j-bulkhead -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-bulkhead</artifactId>
+                <version>2.2.0</version>
+            </dependency>
+
+            <!-- https://mvnrepository.com/artifact/io.github.resilience4j/resilience4j-timelimiter -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-timelimiter</artifactId>
+                <version>2.2.0</version>
+            </dependency>
 
 
         </dependencies>

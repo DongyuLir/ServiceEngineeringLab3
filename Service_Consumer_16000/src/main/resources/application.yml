@@ -26,9 +26,74 @@ resilience4j:
         permitted-number-of-calls-in-half-open-state: 2 #半开的时候，允许通过的请求个数
     #这个实例是用来接受反馈的
     instances:
-      backendA:
+      backendA: #采用失败调用熔断：基于请求的失败率，当请求失败率达到一定阈值时触发熔断
         base-config: default  #这个default指的是上面我们定义的default
-      backendB:
+        failure-rate-threshold: 30 #配置断路器OPEN状态的失败率阈值为30%；
+        sliding-window-type: time_based
+        sliding-window-size: 10 #如果是时间窗口型，slidingWindowSize为秒数
+        minimum-number-of-calls: 5 #触发熔断机制的最小请求个数
+        wait-duration-in-open-state: 5s #从OPEN状态变为HALF_OPEN状态，默认等待时间为5秒
+        permitted-number-of-calls-in-half-open-state: 3 #半开的时候，允许通过的请求个数
+      backendB: #采用慢调用熔断：基于请求的响应时间，当请求响应时间超过预设阈值时触发熔断。
+        base-config: default  #这个default指的是上面我们定义的default
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 30  #慢调用熔断阀值，当慢调用率达到或高于该值时，进入open状态
+        slow-call-duration-threshold: 2s  #慢调用阀值，请求执行的时间大于该值时会标记为慢调用
+        sliding-window-type: time_based
+        sliding-window-size: 10 #如果是时间窗口型，slidingWindowSize为秒数
+        minimum-number-of-calls: 5 #触发熔断机制的最小请求个数
+        wait-duration-in-open-state: 5s
+        permitted-number-of-calls-in-half-open-state: 3
+  thread-pool-bulkhead: #线程隔离
+    configs:
+      default:
+        max-thread-pool-size: 2 #最大调用个数，不配也行
+        core-thread-pool-size: 1 # 与cpu核数有关，默认是最大线程数量需要 大于等于 核心线程池数量，起作用的是他
+        queue-capacity: 1 #排队队列长度
+        keep-alive-duration: 1ms #队列外 请求的 可等待时间
+    instances:
+      threadBulkhead1:
         base-config: default
-        wait-duration-in-open-state: 3000 #会覆盖到之前的 10s
-        failure-rate-threshold: 15
+  bulkhead: #信号量隔离
+    configs:
+      default:
+        max-concurrent-calls: 10 #最大并发调用数
+        max-wait-duration: 20ms #当超过最大并发数时 的最大等待时间
+    instances:
+      bulkhead1:
+        base-config: default
+  ratelimiter:
+    configs:
+      default:
+        limit-for-period: 5 #水桶里面有令牌（放请求的东西）， 在刷新时间内，可以请求的数量
+        limit-refresh-period: 2s
+        timeout-duration: 1s #延迟等待的时间（避免第六个来的服务过早被降级
+    instances:
+      rate1:
+        base-config: default
+  timelimiter:
+    configs:
+      default:
+        timeout-duration:
+          nanos: 1
+        cancel-running-future: true
+    instances:
+      backendA:
+        base-config: default
+  retry:
+    configs:
+      default:
+        max-attempts: 5
+        wait-duration: 1000 #如果没有下面那个配置，那么就是1s后重做一次，重做够5次
+        #        enable-exponential-backoff: true #使用的退避算法，重新计算时间。
+        retry-exceptions:
+          - java.lang.Exception
+    instances:
+      retry1:
+        base-config: default
+      retry2:
+        base-config: default
+        max-attempts: 3
+        wait-duration: 500
+
+
